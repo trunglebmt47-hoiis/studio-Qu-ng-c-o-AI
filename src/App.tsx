@@ -52,31 +52,65 @@ const App = () => {
 
   const startCamera = async () => {
     setErrorMessage(null);
-    try {
-      // Try with environment camera first (back camera)
-      let stream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
-        });
-      } catch (e) {
-        // Fallback to any available camera
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      }
+    
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setErrorMessage("Trình duyệt của bạn không hỗ trợ truy cập camera. Vui lòng thử trình duyệt khác (như Chrome hoặc Safari).");
+      return;
+    }
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsCameraActive(true);
-      }
+    try {
+      setIsCameraActive(true); // Set active first to ensure video element is rendered
+      
+      // Wait for next tick to ensure videoRef is available
+      setTimeout(async () => {
+        try {
+          let stream;
+          // Try with environment camera first (back camera)
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ 
+              video: { 
+                facingMode: 'environment',
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+              } 
+            });
+          } catch (e) {
+            console.log("Environment camera failed, trying default camera...");
+            // Fallback to any available camera
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          }
+
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            // Ensure video starts playing
+            try {
+              await videoRef.current.play();
+            } catch (playError) {
+              console.error("Error playing video:", playError);
+            }
+          }
+        } catch (innerErr: any) {
+          console.error("Inner camera error:", innerErr);
+          setIsCameraActive(false);
+          handleCameraError(innerErr);
+        }
+      }, 100);
     } catch (err: any) {
-      console.error("Error accessing camera:", err);
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.message?.includes('dismissed')) {
-        setErrorMessage("Quyền truy cập camera bị từ chối. Vui lòng cấp quyền trong cài đặt trình duyệt hoặc thử mở ứng dụng trong tab mới.");
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        setErrorMessage("Không tìm thấy camera trên thiết bị này.");
-      } else {
-        setErrorMessage("Lỗi truy cập camera: " + (err.message || "Không rõ nguyên nhân"));
-      }
+      console.error("Outer camera error:", err);
+      setIsCameraActive(false);
+      handleCameraError(err);
+    }
+  };
+
+  const handleCameraError = (err: any) => {
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.message?.includes('dismissed')) {
+      setErrorMessage("Quyền truy cập camera bị từ chối. Vui lòng cấp quyền trong cài đặt trình duyệt.");
+    } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      setErrorMessage("Không tìm thấy camera trên thiết bị này.");
+    } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+      setErrorMessage("Camera đang được sử dụng bởi một ứng dụng khác.");
+    } else {
+      setErrorMessage("Lỗi truy cập camera: " + (err.message || "Không rõ nguyên nhân"));
     }
   };
 
@@ -297,6 +331,7 @@ const App = () => {
                     ref={videoRef} 
                     autoPlay 
                     playsInline 
+                    muted
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
