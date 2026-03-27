@@ -201,9 +201,17 @@ const App = () => {
     }));
     setResults(newResults);
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    // API Keys provided by user for permanent storage
+    const FIXED_KEYS = [
+      "AIzaSyAPHZOXOUdLACfDN3PyUhmdn04RNfmt554",
+      "AIzaSyB80DnOCvSNQDBBbCCk5eC6-JyfV4t4278"
+    ];
+
+    // Use environment variable if available, otherwise rotate through fixed keys
+    const apiKey = process.env.GEMINI_API_KEY || FIXED_KEYS[Math.floor(Math.random() * FIXED_KEYS.length)];
+    
     if (!apiKey) {
-      setErrorMessage("Gemini API Key is missing. Please check your environment variables.");
+      setErrorMessage("Không tìm thấy API Key. Vui lòng kiểm tra lại cấu hình.");
       setIsProcessing(false);
       return;
     }
