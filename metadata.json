@@ -1,0 +1,5 @@
+{
+  "name": "AI Product Ad Studio",
+  "description": "Generate professional product advertisement photography from simple product photos using Gemini AI.",
+  "requestFramePermissions": ["camera"]
+}
